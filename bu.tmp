@@ -1,0 +1,32 @@
+cp -r word word$(date)
+
+program took: 0.000029s
+optlist: def
+src: word
+dest: word
+cp -r word word$(date)
+
+program took: 0.000036s
+optlist: 
+src: word
+dest: word
+to many args!
+cp -r word wo3$(date)
+
+program took: 0.000036s
+optlist: kdef
+src: word
+dest: wo3
+cp -r word word$(date)
+
+program took: 0.000044s
+optlist: df
+src: word
+dest: word
+usage: bu [options] [File to Backuo]
+-h -> help
+2-->bu -de -f word
+-->bu word
+-->bu -k word -def wo3 fo -d
+-->bu -d word -f word
+-->bu

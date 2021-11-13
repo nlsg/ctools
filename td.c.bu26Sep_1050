@@ -1,0 +1,159 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ncurses.h>
+#include <nls.h>	
+
+#define PATH_ "~/td/"
+#define MAX_TABLES 20
+
+//split this process in two functions 
+//one to fetch data in arr[WND][TD]and one to draw it 
+struct td_t
+{	uint sizes[MAX_TABLES];
+	char td_a[MAX_TABLES][MAX_TABLES][256];
+}td_pkg;
+
+struct td_t * test_func(struct td_t * td_pkg)
+{	printf(_b"pkg_t\n"_n"sz: %u\n",td_pkg->sizes[0]);
+	td_pkg->sizes[0] = 99;
+	return td_pkg;
+}
+char *** fetch_tables(char td_a[MAX_TABLES][MAX_TABLES][256])
+{	
+	char buff_[256], buff [256];
+	FILE * fp = popen("ls "PATH_" | grep .td","r");
+	uint i = 0, i_ = 0;
+	while(fgets(buff,sizeof(buff),fp) != NULL)
+	{	sprintf(buff_,"cat "PATH_"%s",buff);
+		FILE * fp_ = popen(buff_,"r");
+		i_ = 0;
+		strcpy(td_a[i][i_++],buff);
+		while(fgets(buff,sizeof(buff),fp_) != NULL)
+			strcpy(td_a[i][i_++],buff);
+		td_a[i++][i_][0] = '\0';
+		pclose(fp_);
+	}
+	td_a[i][0][0] = '\0';
+	pclose(fp);
+	return td_a;
+}
+WINDOW ** wnd_a_init(char td_a[MAX_TABLES][MAX_TABLES][256], uint selected[2])
+{					//array of tables with are arrays of str	//selected {table, item}
+	WINDOW ** wnd_a = malloc((sizeof (WINDOW*))* MAX_TABLES);
+	int y,x,n = 0, i_off = 0;
+	getmaxyx(stdscr,y,x);
+	for(int i = 0;;i++)											//iterate thru tables
+	{	if (td_a[i][0][0] == '\0')
+		{	wnd_a[i] = NULL;
+			break;
+		}
+		if (((i-i_off+1)*30) >= x)								//if window has no space on screen
+		{	n++;												//for y-axis
+			i_off = i;
+		}
+		wnd_a[i] = newwin(15,29,2 + 16*n ,2 + 30*(i-i_off));
+		for(uint i_ = 1; td_a[i][i_][0] != '\0' ;i_++) 
+			for(uint j = 0;j <= strlen(td_a[i][i_]) - 2; j++)	//iterate thru content
+			{
+				if (i == selected[0] && i_ == selected[1])
+				{
+					wattron(wnd_a[i],A_STANDOUT);
+					mvwprintw(wnd_a[i],i_,1 + j,"%c",td_a[i][i_][j]);
+					wattroff(wnd_a[i],A_STANDOUT);
+				}else
+					mvwprintw(wnd_a[i],i_,1 + j,"%c",td_a[i][i_][j]);
+			}
+		box(wnd_a[i],0,0);
+		wattron(wnd_a[i],A_BOLD);
+		for(uint j = 0; j <= strlen(td_a[i][0]) -2;j++)
+			mvwprintw(wnd_a[i],0,1+j,"%c",td_a[i][0][j]);
+
+		wrefresh(wnd_a[i]);		
+	}
+	return wnd_a;
+
+}
+
+int main(int argc, char ** argv)
+{	//popen throu cat and creat window in WINDOW ** set title to namue
+	//
+	//get win lenght and hight and adopt location accordingly
+	//
+	//HINTS: curs_set();
+	//int row, col;
+	//	getmaxyx(stdscr, row, col);
+	
+	char td_a[MAX_TABLES][MAX_TABLES][256];
+	if (0)
+	{
+		system("clear");
+		printf(_b"strlen:\n"_n);
+		for(uint i = 0; td_a[i][0][0] != '\0';i++)
+			printf("\ttd_a[%u][0]-> %s size: %u; sizeof: %u\n\r"
+					,i,td_a[i][0],strlen(td_a[i]),sizeof td_a[i]);
+		test_func(&td_pkg);
+		printf("sz: %u\n",td_pkg.sizes[0]);
+		printf("sizeof: td_a->%u, sizes->%u, td_pkg->%u\n"
+				,sizeof td_pkg.td_a, sizeof td_pkg.sizes, sizeof td_pkg);
+		return 0;
+	}
+	initscr();
+	cbreak();	
+	noecho();
+	curs_set(0);
+
+	
+	WINDOW ** wnd_a;
+	int ch;
+	uint main_w[2], selected[2] = {3,5}, i;
+	for(;;)
+	{	if (ch == 'c' || ch == 'q')
+			break;
+		else if(ch == 'j' && selected[1] <=10)			
+			selected[1]+=1;
+		else if(ch == 'k' && selected[1] > 1)
+			selected[1]-=1;
+		else if(ch == 'l' && selected[0] <= MAX_TABLES)
+			selected[0]+=1;
+		else if(ch == 'h' && selected[0] > 0)
+			selected[0]-=1;
+			
+		getmaxyx(stdscr,main_w[0],main_w[1]);
+		WINDOW ** status_bar_w = newwin(2,main_w[1],main_w[0]-2,0);
+		wattron(status_bar_w, A_STANDOUT);
+		wnd_a = wnd_a_init(fetch_tables(td_a),selected);
+
+		for(uint i = 1 ;i <= main_w[1];i++)
+			wprintw(status_bar_w," ");
+		wattroff(status_bar_w, A_STANDOUT);
+		mvwprintw(status_bar_w,1,0,"->%c[%u] h,w->[%u,%u] selected[%u,%u], rfrsh: %u"
+				,ch,ch,main_w[0],main_w[1],selected[0],selected[1],i++);
+		wrefresh(status_bar_w);
+	ch = getchar();
+	}
+
+
+	free(wnd_a);
+	endwin();
+	return 0;
+
+	mvprintw(5,5,"starting tui");
+	refresh();
+	char c = getchar();
+	mvprintw(5,5,"\ngot char: %u", c);
+	refresh();
+	c = getchar();
+	mvprintw(5,5,"\ngot char: %u", c);
+	refresh();
+
+
+	wnd_a = malloc((sizeof (WINDOW*))* MAX_TABLES);
+
+	load_tables(wnd_a);
+
+	for(;;)getchar();	
+	endwin();
+	free(wnd_a);
+	return 0;
+}
